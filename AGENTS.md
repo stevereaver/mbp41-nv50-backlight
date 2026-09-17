@@ -23,6 +23,9 @@ backlight PWM register directly — the same register nouveau uses.
 - `dkms.conf` — DKMS packaging (`AUTOINSTALL=yes`)
 - `tools/extract_vbios.py` — extracts the 8600M GT VBIOS from an SPI
   flash dump (the preferred fix: nouveau + extracted VBIOS)
+- `tools/int0800_flash.c` — read-only MTD map of the firmware flash via
+  the ACPI INT0800 device (extraction without flashrom/iomem=relaxed);
+  a candidate for linux-mtd upstreaming
 - `okf/` — OKF knowledge bundle; **update it when you change the code**
 
 ## Conventions

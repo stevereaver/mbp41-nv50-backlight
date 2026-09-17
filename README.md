@@ -19,10 +19,15 @@ The 8600M GT has no on-card ROM; the VBIOS is buried inside Apple's EFI
 firmware in compressed FFS sections on the SPI flash:
 
 ```sh
-# one-time: boot with iomem=relaxed so flashrom can reach the SPI controller
-sudo flashrom -p internal -r mbp41_flash.bin
+# read the flash — either via the tiny read-only MTD driver (no reboot):
+cd tools && make -C /lib/modules/$(uname -r)/build M=$PWD
+sudo modprobe mtd map_rom && sudo insmod int0800_flash.ko
+sudo cat /dev/mtd0 > firmware_window.bin        # flash is at the top of the window
+# ...or with flashrom (needs one boot with iomem=relaxed):
+#   sudo flashrom -p internal -r firmware_window.bin
+
 python3 -m venv venv && ./venv/bin/pip install uefi-firmware
-./venv/bin/python tools/extract_vbios.py mbp41_flash.bin   # writes vbios_10de_0407.rom
+./venv/bin/python tools/extract_vbios.py firmware_window.bin   # writes vbios_10de_0407.rom
 
 sudo cp vbios_10de_0407.rom /usr/lib/firmware/nvidia/mbp41-8600mgt.rom
 # include it in the initramfs (nouveau loads early), then:

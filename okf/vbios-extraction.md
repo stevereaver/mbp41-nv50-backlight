@@ -15,10 +15,32 @@ is why raw scans find no `PCIR`/`NVIDIA` strings.
 
 ## Extraction procedure
 
-1. Boot once with `iomem=relaxed` (needed because
-   `CONFIG_IO_STRICT_DEVMEM=y` blocks flashrom's `/dev/mem` access to the
-   SPI controller). Revert the parameter afterwards.
-2. `sudo flashrom -p internal -r mbp41_flash.bin` — dumps all 2 MiB.
+There are two ways to read the flash:
+
+**Method A — read-only MTD (no reboot, no flashrom).** The firmware hub
+decodes the flash into physical memory below 4GB — verified
+byte-identical to a flashrom dump. `tools/int0800_flash.c` is a ~77-line
+ACPI platform driver binding `INT0800` that maps that window read-only
+via `map_rom`:
+
+```sh
+cd tools && make -C /lib/modules/$(uname -r)/build M=$PWD
+sudo modprobe mtd map_rom && sudo insmod int0800_flash.ko
+sudo cat /dev/mtd0 > firmware_window.bin     # 16MB window; flash at the top
+```
+
+The INT0800 `_CRS` window (here `ff000000–ffffffff`) may be larger than
+the chip — undecoded holes read `0xff`; scan for `_FVH` signatures to
+locate the real flash content (on MBP4,1 it sits at window offset
+`0x1e00000`).
+
+**Method B — flashrom.** Boot once with `iomem=relaxed` (needed because
+`CONFIG_IO_STRICT_DEVMEM=y` blocks flashrom's `/dev/mem` access to the
+SPI controller), revert the parameter afterwards, then
+`sudo flashrom -p internal -r mbp41_flash.bin` — dumps all 2 MiB.
+
+Then, from either dump:
+
 3. Parse with the `uefi-firmware` Python package: create a
    `FirmwareVolume` at each `_FVH` signature, `process()` it, and walk
    `objects` recursively collecting `content`/`data` of every section
@@ -56,6 +78,22 @@ path; when booting nouveau it must not load (`module_blacklist` or the
 built-in bound-driver check), and `nv_backlight` replaces it — see
 [dead approaches](dead-approaches.md) and
 [register interface](register-interface.md).
+
+## Upstream considerations
+
+The ROM itself cannot be submitted anywhere (no redistribution license —
+same reason `linux-firmware` carries no VBIOS dumps). The shareable
+pieces are:
+
+- `tools/extract_vbios.py` — works on any UEFI flash dump; a candidate
+  for envytools or standalone distribution.
+- `tools/int0800_flash.c` — a plausible `linux-mtd` contribution:
+  INT0800 is the standard firmware-hub ACPI ID on x86, so this gives
+  read-only userspace flash access on many EFI machines (not just Macs).
+- A nouveau kernel patch that scans the firmware flash (FV/FFS walk +
+  decompress) would remove the userspace step entirely, but putting
+  UEFI volume parsing inside a GPU driver is a hard sell upstream; the
+  MTD + userspace split is cleaner.
 
 ## Note on redistribution
 

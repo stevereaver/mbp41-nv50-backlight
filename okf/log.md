@@ -54,3 +54,13 @@ timestamp: 2026-09-17T00:00:00Z
   firmware); `tools/extract_vbios.py` reproduces it from a flash dump.
 - Added a bound-driver check to `mbp_nv50_bl` (`pdev->driver` →
   `-EBUSY`) so it can never poke BAR0 while nouveau owns the GPU.
+- Investigated generalizing the fix: the firmware flash is decoded into
+  physical memory (`INT0800` window `ff000000–ffffffff`; the 2MiB flash
+  at `0xffe00000`) and is readable via plain `ioremap` — no SPI driver
+  needed (Debian doesn't build `spi_intel` anyway, and `lpc_ich` creates
+  no SPI child on ICH8M). Verified with a read-only `map_rom` MTD map
+  driver: dump byte-identical to flashrom (modulo live NVRAM churn in
+  the variable store). `tools/int0800_flash.c` binds the ACPI INT0800
+  device generically — candidate for linux-mtd upstreaming.
+  `ichxrom` exists in-tree but only covers ICH4/5-era southbridges and
+  is unmaintained.
