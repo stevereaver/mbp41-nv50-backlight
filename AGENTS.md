@@ -18,9 +18,11 @@ backlight PWM register directly — the same register nouveau uses.
 
 ## Repo layout
 
-- `mbp_nv50_bl.c` — the entire driver (~135 lines)
+- `mbp_nv50_bl.c` — the entire driver (~140 lines)
 - `Makefile` — kbuild entry (`obj-m`)
 - `dkms.conf` — DKMS packaging (`AUTOINSTALL=yes`)
+- `tools/extract_vbios.py` — extracts the 8600M GT VBIOS from an SPI
+  flash dump (the preferred fix: nouveau + extracted VBIOS)
 - `okf/` — OKF knowledge bundle; **update it when you change the code**
 
 ## Conventions
@@ -54,8 +56,13 @@ cannot hang the GPU, but keep BAR0 writes limited to `PWM_CTL` exactly.
 ## Known constraints / don'ts
 
 - **Never load alongside a bound nouveau** — two owners of the PWM
-  conflict. The target machine can never bind nouveau (no VBIOS), but
-  guard docs/comments accordingly.
+  conflict. The module checks `pdev->driver` and bails with `-EBUSY` when
+  another driver owns the GPU, but belt-and-braces: on the nouveau boot
+  path the target machine also carries `module_blacklist=mbp_nv50_bl`.
+- The machine's *primary* config is now nouveau + the extracted VBIOS
+  (`nouveau.config=NvBios=nvidia/mbp41-8600mgt.rom`); `mbp_nv50_bl` is
+  the `nomodeset` fallback path only. The extracted ROM is copyrighted
+  firmware — never commit it.
 - The SMI-port approach (`apple_bl`/`mbp_nvidia_bl` style, ports
   `0x52e/0x52f` or `0xb2/0xb3`) is verified dead under EFI — don't
   reintroduce it.

@@ -1,21 +1,50 @@
 # mbp41-nv50-backlight
 
-A small out-of-tree Linux kernel module that provides display backlight
-control on NVIDIA-GPU MacBook Pros (verified on MacBookPro4,1, GeForce
-8600M GT) booted under EFI via GRUB — where **none** of the in-tree
-drivers work.
+Two pieces for the MacBookPro4,1 (GeForce 8600M GT) booted under GRUB/EFI:
 
-Registers `/sys/class/backlight/nvidia_backlight`, so standard desktop
-tools work: xfce4-power-manager (panel slider + Fn keys), systemd-backlight
-(save/restore across boots), GNOME/KDE sliders, `brightnessctl`, etc.
+1. **`tools/extract_vbios.py`** — recovers the GPU's real VBIOS from the
+   machine's own SPI flash. Feed it to nouveau via
+   `nouveau.config=NvBios=nvidia/mbp41-8600mgt.rom` and you get full KMS,
+   glamor-accelerated Xorg, and nouveau's native `nv_backlight`. This is
+   the **preferred** configuration — verified working on kernel 7.1.8.
+2. **`mbp_nv50_bl`** — a small out-of-tree kernel module that provides
+   backlight control when booted with `nomodeset` (the fallback path, or
+   machines where the VBIOS route isn't used). Registers
+   `/sys/class/backlight/nvidia_backlight` so xfce4-power-manager, Fn
+   keys, systemd-backlight, `brightnessctl`, etc. all work.
 
-## Why this module exists
+## Getting nouveau working (preferred)
 
-On this hardware under a GRUB/EFI boot:
+The 8600M GT has no on-card ROM; the VBIOS is buried inside Apple's EFI
+firmware in compressed FFS sections on the SPI flash:
+
+```sh
+# one-time: boot with iomem=relaxed so flashrom can reach the SPI controller
+sudo flashrom -p internal -r mbp41_flash.bin
+python3 -m venv venv && ./venv/bin/pip install uefi-firmware
+./venv/bin/python tools/extract_vbios.py mbp41_flash.bin   # writes vbios_10de_0407.rom
+
+sudo cp vbios_10de_0407.rom /usr/lib/firmware/nvidia/mbp41-8600mgt.rom
+# include it in the initramfs (nouveau loads early), then:
+#   kernel cmdline: drop nomodeset, add
+#   nouveau.config=NvBios=nvidia/mbp41-8600mgt.rom module_blacklist=mbp_nv50_bl
+```
+
+Verified result: `bios: version 60.84.49.03.00`, nouveau DRM init,
+`nouveaudrmfb` console, modesetting Xorg with glamor on NV84, LVDS-1 at
+native 1440x900, `nv_backlight` functional. See
+[`okf/vbios-extraction.md`](okf/vbios-extraction.md) for the full
+procedure including the initramfs hook and GRUB setup. **Do not commit or
+redistribute the extracted ROM** — it's NVIDIA/Apple copyrighted firmware.
+
+## Why the kernel module exists
+
+When running `nomodeset` (no VBIOS supplied), nouveau cannot bind and
+**none** of the in-tree backlight drivers work:
 
 | Approach | Why it fails |
 |---|---|
-| `nouveau` (`nvidia_backlight`) | Cannot probe the GPU — no VBIOS is readable from any source (PRAMIN/PROM/ACPI/PCIROM/PLATFORM all empty), `probe fails -22`. Machine must boot with `nomodeset`. |
+| `nouveau` (`nvidia_backlight`) | Cannot probe the GPU — no VBIOS is readable from any source (PRAMIN/PROM/ACPI/PCIROM/PLATFORM all empty), `probe fails -22`. Works only if a VBIOS file is supplied — see above. |
 | `apple_bl` (formerly `mbp_nvidia_bl`) | Drives backlight via SMI ports (`0x52e/0x52f` for NVIDIA-chipset models, `0xb2/0xb3` for Intel-chipset models). The SMI handler only exists under Apple's legacy BIOS/CSM boot — under EFI the ports are dead. Also gated behind `acpi_video_get_backlight_type() == acpi_backlight_vendor`, which is not selected on this machine. |
 | `apple_gmux` | Requires the gmux display-mux chip found only on unibody MacBooks (MacBookPro5,1+, 2008 late and later). |
 | `acpi_video` | The ACPI video device exposes no `_BCL`/`_BCM` under EFI. |

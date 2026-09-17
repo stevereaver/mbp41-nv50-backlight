@@ -33,3 +33,24 @@ timestamp: 2026-09-17T00:00:00Z
   device, so not upstream-acceptable; the defensible upstream fix would be
   inside nouveau (register PWM backlight even when VBIOS init fails), or
   supplying a VBIOS via `nouveau.config=NvBios=`.
+
+## 2026-09-17 — VBIOS extracted, nouveau works
+
+- Dumped the 2 MiB SPI flash (SST25VF016B) with flashrom under
+  `iomem=relaxed`; parsed FFS with `uefi-firmware` and found the VBIOS
+  inside a compressed `GuidDefinedSection` (FFS file
+  `b0cd1bfc-317d-aa49-936a-a4600d9dd083`): `55AA`+`PCIR`, `10de:0407`,
+  53248 B, version `60.84.49.03.00`, checksum valid.
+- Installed it as `/usr/lib/firmware/nvidia/mbp41-8600mgt.rom`, added an
+  initramfs hook, booted with
+  `nouveau.config=NvBios=nvidia/mbp41-8600mgt.rom` and no `nomodeset`:
+  nouveau bound cleanly, `nouveaudrmfb` console, Xorg modesetting +
+  glamor on NV84, LVDS 1440x900 native, `nv_backlight` registered and
+  verified.
+- Made permanent: default GRUB cmdline carries the `NvBios=` path and
+  `module_blacklist=mbp_nv50_bl`; a `nomodeset` "fbdev fallback" GRUB
+  entry preserves the old working path (where `mbp_nv50_bl` still
+  provides backlight). The ROM itself is not committed (copyrighted
+  firmware); `tools/extract_vbios.py` reproduces it from a flash dump.
+- Added a bound-driver check to `mbp_nv50_bl` (`pdev->driver` →
+  `-EBUSY`) so it can never poke BAR0 while nouveau owns the GPU.

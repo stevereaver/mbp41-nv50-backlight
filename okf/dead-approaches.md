@@ -24,8 +24,10 @@ probe with driver nouveau failed with error -22
 
 Apple's GPU ROM contains an EFI driver, not an x86 VBIOS, and GRUB clears
 the legacy shadow area. `nouveau.config=NvBios=PRAMIN` was tested and also
-fails. The only remaining path is `NvBios=<file>` via `request_firmware`,
-which requires an externally-sourced ROM dump — none available.
+fails. The `NvBios=<file>` path via `request_firmware` **does** work once
+the VBIOS is extracted from the machine's own SPI flash — see
+[vbios-extraction](vbios-extraction.md). Nouveau then binds fully, so this
+section's failure only applies when no ROM file is supplied.
 
 ## apple_bl — dead SMI ports
 

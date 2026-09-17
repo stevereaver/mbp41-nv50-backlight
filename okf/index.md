@@ -17,6 +17,7 @@ booted under GRUB/EFI with `nomodeset`.
 - [Why every stock driver fails](dead-approaches.md) — nouveau, apple_bl, apple_gmux, acpi_video
 - [The PWM register interface](register-interface.md) — the mechanism the module drives
 - [Install & verify](install-and-verify.md) — DKMS packaging, autoload, desktop integration
+- [VBIOS extraction](vbios-extraction.md) — recovering the 8600M GT VBIOS from the SPI flash to enable nouveau
 - [Related system quirks](related-system-quirks.md) — the xserver fbdev bug and other context on this machine
 
 ## Change log

@@ -76,6 +76,12 @@ static int __init nv50_bl_init(void)
 		return -ENODEV;
 	}
 
+	/* refuse to poke registers on a GPU another driver owns */
+	if (gpu->driver) {
+		pci_dev_put(gpu);
+		return -EBUSY;
+	}
+
 	if (pci_enable_device(gpu) < 0) {
 		pci_dev_put(gpu);
 		return -ENODEV;
