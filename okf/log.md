@@ -60,7 +60,11 @@ timestamp: 2026-09-17T00:00:00Z
   needed (Debian doesn't build `spi_intel` anyway, and `lpc_ich` creates
   no SPI child on ICH8M). Verified with a read-only `map_rom` MTD map
   driver: dump byte-identical to flashrom (modulo live NVRAM churn in
-  the variable store). `tools/int0800_flash.c` binds the ACPI INT0800
+  the variable store). `tools/int0800.c` binds the ACPI INT0800
   device generically — candidate for linux-mtd upstreaming.
   `ichxrom` exists in-tree but only covers ICH4/5-era southbridges and
   is unmaintained.
+- Prepared and sent `mtd: maps: add INT0800 firmware-flash map driver`
+  to linux-mtd@lists.infradead.org (Cc: MTD maintainers). The submitted
+  patch lives in the `linux-upstream` worktree; `tools/int0800.c`
+  matches it exactly.
