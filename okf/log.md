@@ -78,3 +78,12 @@ timestamp: 2026-09-17T00:00:00Z
   extraction on EFI-booted Apple machines:
   https://gitlab.freedesktop.org/nouveau/wiki/-/merge_requests/63
   (draft text kept at `docs/wiki-DumpingVideoBios-addition.mdwn`).
+- Replicated the full setup on a second MBP4,1 (same
+  `MBP41.88Z.00C1.B03` firmware): in-place Bookworm→Trixie upgrade,
+  reused the extracted VBIOS (checksum-verified), nouveau bound on
+  first 7.1.8 boot with glamor + `nv_backlight`. The packaged
+  `broadcom-sta` DKMS driver no longer builds on trixie kernels, so
+  the BCM4321 WiFi moved to in-kernel `b43` +
+  `firmware-b43-installer` — seamless. See
+  [replication](replication.md) "Upgrading a Bookworm install in
+  place".

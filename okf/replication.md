@@ -48,6 +48,38 @@ machine reports a different EFI firmware version in `dmidecode`.
    `60.84.49.03.00`; `ls /sys/class/backlight/` shows `nv_backlight`;
    Xorg log shows `modeset` + `glamor` on NV84.
 
+## Upgrading a Bookworm install in place
+
+Verified on a second unit (2026-09-17). A stock SpiralLinux/Debian 12
+install upgrades cleanly to trixie:
+
+1. Snapper `pre`/`post` snapshot around the whole operation (Btrfs
+   `@`/`@snapshots` layout already has `grub-btrfs` integration).
+2. Retarget `/etc/apt/sources.list` to `trixie` (incl. `-security`,
+   `-updates`, `-backports`); disable bookworm-only repos
+   (SpiralLinux fasttrack etc.).
+3. `apt full-upgrade` inside `tmux` with logging — ~1700 packages,
+   a few hours on this hardware. Watch for debconf service-restart
+   prompts.
+4. **`broadcom-sta-dkms` fails to build on kernel ≥ 7.1** — the
+   packaged 6.30.223.271 source doesn't compile (`typedefs.h` include
+   failure). Purge it and switch the BCM4321 (`14e4:4328`) to the
+   in-kernel `b43` driver:
+   ```sh
+   sudo apt-get install firmware-b43-installer
+   sudo apt-get purge broadcom-sta-dkms broadcom-sta-common broadcom-sta-source
+   ```
+   `b43` bound on first boot and NetworkManager reassociated with the
+   same DHCP lease — no config needed. This also unblocks the
+   `linux-headers-*` packages whose postinst was failing on the DKMS
+   error.
+5. `apt autoremove` then drops ~100 bookworm leftovers (incl. the
+   6.1 kernel; the 6.5 backports kernel is kept as a fallback).
+
+Then continue from step 2 above (VBIOS → initramfs → GRUB → reboot).
+No SPI dump or `iomem=relaxed` was needed — the shared ROM worked
+as-is on identical `MBP41.88Z.00C1.B03` firmware.
+
 ## What to check if it fails
 
 - Different EFI firmware (`dmidecode -t bios`) → re-extract via
