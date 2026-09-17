@@ -1,0 +1,23 @@
+Proposed addition to https://nouveau.freedesktop.org/DumpingVideoBios.html
+(sources/DumpingVideoBios.mdwn on gitlab.freedesktop.org/nouveau/wiki)
+
+Insert this section after the powerpc/Open Firmware block, before the
+"Make sure you have a file..." paragraph:
+
+------------------------------------------------------------------------
+
+On EFI-booted Apple machines (e.g. MacBookPro4,1 / GeForce 8600M GT) none of
+the usual sources work: the card has no option ROM, the `0xC0000` shadow area
+is empty, the PCI ROM BAR reads as all-zero, and PRAMIN/PROM/ACPI/PLATFORM all
+fail.  The VBIOS is stored inside a compressed UEFI firmware-file section in
+the machine's SPI flash.  The flash contents are decoded into physical memory
+below 4 GB via the ACPI INT0800 firmware-hub device, so the VBIOS can be
+recovered by mapping that window (e.g. with a read-only MTD map driver or
+flashrom) and scanning the firmware volumes for a `55 AA` / `PCIR` option ROM
+matching the card's PCI vendor/device IDs.  Working tooling for this —
+including the flash map driver and an FFS parser — is at
+[[https://github.com/stevereaver/mbp41-nv50-backlight]].  Verified on kernel
+7.1.x: nouveau accepts the extracted image via `config=NvBios=` and
+initialises fully.
+
+------------------------------------------------------------------------
