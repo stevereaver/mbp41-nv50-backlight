@@ -80,6 +80,44 @@ Then continue from step 2 above (VBIOS → initramfs → GRUB → reboot).
 No SPI dump or `iomem=relaxed` was needed — the shared ROM worked
 as-is on identical `MBP41.88Z.00C1.B03` firmware.
 
+## Video decode firmware (optional, recommended)
+
+Nouveau on NV84 logs `vp:`/`bsp:` init failures until the VP2 video
+engine firmware is installed. It's extracted from NVIDIA's own driver
+(the license forbids redistribution, so everyone extracts their own):
+
+```sh
+mkdir /tmp/nouveau && cd /tmp/nouveau
+wget https://raw.github.com/envytools/firmware/master/extract_firmware.py
+wget http://us.download.nvidia.com/XFree86/Linux-x86/325.15/NVIDIA-Linux-x86-325.15.run
+sh NVIDIA-Linux-x86-325.15.run --extract-only
+python3 extract_firmware.py
+sudo cp -d nv* vuc-* /lib/firmware/nouveau/
+sudo apt-get install mesa-vdpau-drivers vdpauinfo
+```
+
+Add the `nv84_*` blobs to the initramfs hook (`/lib/firmware/nouveau`
+directory), rebuild initramfs, reboot. Result: VP2 engine live →
+VDPAU feature set A (full H.264, MPEG1/2; no VC-1). Verified with
+`vdpauinfo` plus an ffmpeg `-hwaccel vdpau` decode producing
+`vdpau(progressive)` frames. VLC/mpv use it natively.
+
+Note: `vdpau-va-driver` (VA-API bridge) no longer exists in trixie —
+VDPAU-only apps only.
+
+## Known dead ends on this hardware
+
+- **GPU reclocking**: `pstate` lists 4 levels (169→520 MHz) but any
+  write returns EIO. `nv50_clk_calc` fails at `nvbios_pll_parse` —
+  Apple's VBIOS lacks the PLL limits entries nouveau needs to program
+  clocks safely. The GPU stays at its 275 MHz boot clock. Same code
+  path means `nouveau.config=NvClkMode=` would fail identically.
+- **`gr: TRAP_PROP` / `DATA_ERROR INVALID_BITFIELD` noise** from
+  gst-plugin-scan/ffmpeg probing — cosmetic nouveau userspace quirk,
+  unchanged by firmware presence. Harmless.
+- **Runtime PM**: `power/control=auto` is settable but the GPU can't
+  suspend while driving the internal panel. Not worth wiring up.
+
 ## What to check if it fails
 
 - Different EFI firmware (`dmidecode -t bios`) → re-extract via

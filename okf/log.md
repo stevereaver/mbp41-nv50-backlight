@@ -87,3 +87,13 @@ timestamp: 2026-09-17T00:00:00Z
   `firmware-b43-installer` — seamless. See
   [replication](replication.md) "Upgrading a Bookworm install in
   place".
+- Graphics improvements pass on second machine: extracted the NV84
+  VP2 video-engine firmware from NVIDIA 325.15
+  (`envytools/firmware` `extract_firmware.py`), installed to
+  `/lib/firmware/nouveau` + initramfs. `vp:`/`bsp:` init failures
+  gone; `vdpauinfo` reports VDPAU feature set A (H.264, MPEG1/2) and
+  an `ffmpeg -hwaccel vdpau` decode produced real `vdpau` frames.
+  Reclocking confirmed impossible on this VBIOS (`pstate` write →
+  EIO; `nvbios_pll_parse` fails — no PLL limits entries), and
+  `vdpau-va-driver` no longer exists in trixie. Details in
+  [replication](replication.md).
