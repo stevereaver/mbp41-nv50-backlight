@@ -1,1 +1,1 @@
-obj-m += int0800_flash.o
+obj-m += int0800.o

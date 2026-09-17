@@ -19,13 +19,13 @@ There are two ways to read the flash:
 
 **Method A — read-only MTD (no reboot, no flashrom).** The firmware hub
 decodes the flash into physical memory below 4GB — verified
-byte-identical to a flashrom dump. `tools/int0800_flash.c` is a ~77-line
+byte-identical to a flashrom dump. `tools/int0800.c` is a ~77-line
 ACPI platform driver binding `INT0800` that maps that window read-only
 via `map_rom`:
 
 ```sh
 cd tools && make -C /lib/modules/$(uname -r)/build M=$PWD
-sudo modprobe mtd map_rom && sudo insmod int0800_flash.ko
+sudo modprobe mtd map_rom && sudo insmod int0800.ko
 sudo cat /dev/mtd0 > firmware_window.bin     # 16MB window; flash at the top
 ```
 
@@ -87,7 +87,7 @@ pieces are:
 
 - `tools/extract_vbios.py` — works on any UEFI flash dump; a candidate
   for envytools or standalone distribution.
-- `tools/int0800_flash.c` — a plausible `linux-mtd` contribution:
+- `tools/int0800.c` — a plausible `linux-mtd` contribution:
   INT0800 is the standard firmware-hub ACPI ID on x86, so this gives
   read-only userspace flash access on many EFI machines (not just Macs).
 - A nouveau kernel patch that scans the firmware flash (FV/FFS walk +

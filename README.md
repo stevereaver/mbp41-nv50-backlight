@@ -21,7 +21,7 @@ firmware in compressed FFS sections on the SPI flash:
 ```sh
 # read the flash — either via the tiny read-only MTD driver (no reboot):
 cd tools && make -C /lib/modules/$(uname -r)/build M=$PWD
-sudo modprobe mtd map_rom && sudo insmod int0800_flash.ko
+sudo modprobe mtd map_rom && sudo insmod int0800.ko
 sudo cat /dev/mtd0 > firmware_window.bin        # flash is at the top of the window
 # ...or with flashrom (needs one boot with iomem=relaxed):
 #   sudo flashrom -p internal -r firmware_window.bin
