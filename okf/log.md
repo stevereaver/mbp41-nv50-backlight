@@ -68,3 +68,9 @@ timestamp: 2026-09-17T00:00:00Z
   to linux-mtd@lists.infradead.org (Cc: MTD maintainers). The submitted
   patch lives in the `linux-upstream` worktree; `tools/int0800.c`
   matches it exactly.
+- v1 got an automated review (Sashiko AI) flagging three real issues:
+  globals instead of per-device state, a map/mapping leak on
+  `mtd_device_register` failure, and `%lx` on `resource_size_t`. v2 sent
+  with all three fixed (devm-managed per-device struct, `map_destroy`
+  error path, `%pa`) plus the missing `Signed-off-by`.
+  Patchwork: https://patchwork.ozlabs.org/project/linux-mtd/list/?q=int0800
