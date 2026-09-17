@@ -20,6 +20,7 @@ booted under GRUB/EFI with `nomodeset`.
 - [VBIOS extraction](vbios-extraction.md) — recovering the 8600M GT VBIOS from the SPI flash to enable nouveau
 - [Replication](replication.md) — condensed setup for a second MBP4,1
 - [Related system quirks](related-system-quirks.md) — the xserver fbdev bug and other context on this machine
+- [VDPAU / NV84 video decode](vdpau-nv84.md) — VP2 firmware, the mesa subchan_del fd bug + LD_PRELOAD shim, and the 7.x kernel decode regression
 
 ## Change log
 

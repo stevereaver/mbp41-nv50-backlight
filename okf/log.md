@@ -97,3 +97,24 @@ timestamp: 2026-09-17T00:00:00Z
   EIO; `nvbios_pll_parse` fails — no PLL limits entries), and
   `vdpau-va-driver` no longer exists in trixie. Details in
   [replication](replication.md).
+- VDPAU deep-dive (2026-09): root-caused two independent bugs blocking
+  NV84 video decode; see [vdpau-nv84](vdpau-nv84.md).
+  - Bug A (mesa, unfixed upstream as of mesa 25.x/main):
+    `nouveau_object_subchan_del()` passes the channel's object *handle*
+    as the ioctl fd instead of `drm->fd` — every subchan-object DEL
+    dies with EBADF, kernel objects leak, and the next malloc-reused
+    address EEXISTs. Kills the second `firmware_present()` probe
+    (BSP 0x74b0) → H.264 reported unsupported → `vdp_decoder_create`
+    INVALID_DECODER_PROFILE. Added `tools/nvif_delfix.so` — an
+    LD_PRELOAD shim that redirects dead-fd NVIF ioctls to the real
+    DRM fd; with it, `vdpauinfo` shows full H.264 and decoder
+    creation succeeds.
+  - Bug B (kernel regression, 6.5 works / 7.1.8 hangs): actual
+    bitstream submission wedges `vp`+`bsp` (watchdog hangs) with
+    `CACHE_ERROR` on subchannel-object binds — nvif-created engine
+    objects don't reach the legacy channel's RAMHT bind path.
+    Confirmed by one-shot booting 6.5.0-0.deb12.1 on the trixie
+    install: identical userspace decodes H.264 cleanly via VDPAU.
+    Needs kernel bisection or upstream report.
+  - Also enabled `GRUB_DEFAULT=saved` on machine 2 so `grub-reboot`
+    works for one-shot kernel testing.
