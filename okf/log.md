@@ -74,3 +74,7 @@ timestamp: 2026-09-17T00:00:00Z
   with all three fixed (devm-managed per-device struct, `map_destroy`
   error path, `%pa`) plus the missing `Signed-off-by`.
   Patchwork: https://patchwork.ozlabs.org/project/linux-mtd/list/?q=int0800
+- Drafted and submitted a nouveau-wiki update documenting VBIOS
+  extraction on EFI-booted Apple machines:
+  https://gitlab.freedesktop.org/nouveau/wiki/-/merge_requests/63
+  (draft text kept at `docs/wiki-DumpingVideoBios-addition.mdwn`).
