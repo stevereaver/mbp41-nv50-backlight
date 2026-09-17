@@ -19,29 +19,38 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 
 /* top-of-4GB firmware decode, used when _CRS reports no window */
 #define INT0800_DEFAULT_PHYS	0xffe00000UL
 #define INT0800_DEFAULT_SIZE	SZ_2M
 
-static struct map_info int0800_map = {
-	.name		= "int0800",
-	.bankwidth	= 1,
+struct int0800 {
+	struct map_info		map;
+	struct mtd_info		*mtd;
 };
-
-static struct mtd_info *int0800_mtd;
 
 static int int0800_probe(struct platform_device *pdev)
 {
 	struct resource *res;
+	struct int0800 *fw;
+	resource_size_t end;
+	int ret;
+
+	fw = devm_kzalloc(&pdev->dev, sizeof(*fw), GFP_KERNEL);
+	if (!fw)
+		return -ENOMEM;
+
+	fw->map.name = dev_name(&pdev->dev);
+	fw->map.bankwidth = 1;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res) {
-		int0800_map.phys = res->start;
-		int0800_map.size = resource_size(res);
+		fw->map.phys = res->start;
+		fw->map.size = resource_size(res);
 	} else {
-		int0800_map.phys = INT0800_DEFAULT_PHYS;
-		int0800_map.size = INT0800_DEFAULT_SIZE;
+		fw->map.phys = INT0800_DEFAULT_PHYS;
+		fw->map.size = INT0800_DEFAULT_SIZE;
 	}
 
 	/*
@@ -49,30 +58,33 @@ static int int0800_probe(struct platform_device *pdev)
 	 * ACPI/pnp resource reservation, so devm_ioremap_resource() would
 	 * fail with -EBUSY.
 	 */
-	int0800_map.virt = ioremap(int0800_map.phys, int0800_map.size);
-	if (!int0800_map.virt)
+	fw->map.virt = devm_ioremap(&pdev->dev, fw->map.phys, fw->map.size);
+	if (!fw->map.virt)
 		return -ENOMEM;
 
-	simple_map_init(&int0800_map);
-	int0800_mtd = do_map_probe("map_rom", &int0800_map);
-	if (!int0800_mtd) {
-		iounmap(int0800_map.virt);
+	simple_map_init(&fw->map);
+	fw->mtd = do_map_probe("map_rom", &fw->map);
+	if (!fw->mtd)
 		return -ENODEV;
-	}
-	int0800_mtd->dev.parent = &pdev->dev;
+	fw->mtd->dev.parent = &pdev->dev;
+	platform_set_drvdata(pdev, fw);
 
-	dev_info(&pdev->dev, "mapped firmware window 0x%lx-0x%lx\n",
-		 int0800_map.phys,
-		 int0800_map.phys + int0800_map.size - 1);
+	end = fw->map.phys + fw->map.size - 1;
+	dev_info(&pdev->dev, "mapped firmware window %pa-%pa\n",
+		 &fw->map.phys, &end);
 
-	return mtd_device_register(int0800_mtd, NULL, 0);
+	ret = mtd_device_register(fw->mtd, NULL, 0);
+	if (ret)
+		map_destroy(fw->mtd);
+	return ret;
 }
 
 static void int0800_remove(struct platform_device *pdev)
 {
-	mtd_device_unregister(int0800_mtd);
-	map_destroy(int0800_mtd);
-	iounmap(int0800_map.virt);
+	struct int0800 *fw = platform_get_drvdata(pdev);
+
+	mtd_device_unregister(fw->mtd);
+	map_destroy(fw->mtd);
 }
 
 static const struct acpi_device_id int0800_ids[] = {
